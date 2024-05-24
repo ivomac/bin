@@ -1,0 +1,81 @@
+#!/usr/bin/env zsh
+
+# This script changes the themes of several applications from the command line input.
+# The available themes are:
+
+theme_opts=(
+	"gruvbox_dark"
+	"gruvbox_dark_soft"
+	"gruvbox_light"
+	"gruvbox_light_soft"
+)
+
+# The following files are symlinked to the appropriate theme files:
+
+sym_files=(
+	"$XDG_CONFIG_HOME/foot/colors/default.ini"
+	"$XDG_CONFIG_HOME/zsh/plugins/fzf-nav/colors/default.zsh"
+	"$XDG_CONFIG_HOME/nvim/after/colors/default.lua"
+)
+
+# The theme files are located in the same directories as the symlinked files, but with the theme name instead of "default".
+# The available themes are "gruvbox_dark" and "gruvbox_light".
+# This script removes the old symlinks and creates new ones with the theme name as the new target.
+
+exit_msg() {
+	echo "$1"
+	notify-send "$1"
+	exit 1
+}
+
+if [[ -z $MENU ]]; then
+	menu="dmenu"
+else
+	menu=$MENU
+fi
+
+if [[ -z $@ ]]; then
+	choice=$(echo ${(j,\n,)theme_opts[@]} | $menu Theme)
+else
+	choice=$1
+fi
+
+if [[ -z $choice ]]; then
+	exit 0
+fi
+
+# Check if the given theme is valid
+if [[ ! " ${theme_opts[@]} " =~ " $choice " ]]; then
+	exit_msg "Invalid theme: $choice"
+fi
+
+# Remove old symlinks and create new ones
+for sym in $sym_files; do
+	ext="${sym:e}"
+	folder="${sym:h}"
+	ori="$folder/$choice${ext:+.$ext}"
+	short_sym="${sym/$XDG_CONFIG_HOME\//}"
+	short_ori="${ori/$XDG_CONFIG_HOME\//}"
+	if [[ ! -f "$ori" ]]; then
+		exit_msg "Error - Source file does not exist: $short_ori"
+	fi
+	echo "$short_sym -> $short_ori"
+	ln -f -s "$ori" $sym
+done
+
+# if system is kde plasma, change between breeze dark and breeze light
+
+if [[ -n $KDE_FULL_SESSION ]]; then
+	if [[ $choice == *dark* ]]; then
+		lookandfeeltool -a org.kde.breezedark.desktop
+	else
+		lookandfeeltool -a org.kde.breeze.desktop
+	fi
+fi
+
+# if foot is running, restart it
+if pgrep -x "foot" > /dev/null; then
+	systemctl --user restart foot-server.service
+fi
+
+

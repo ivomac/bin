@@ -1,0 +1,3 @@
+#!/usr/bin/env zsh
+
+zenity --list --hide-header --title="${1:-Picker}" --column="" --text="" --width=400 --height=600
